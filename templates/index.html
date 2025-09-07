@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+
+{% block title %}VisualTales - Create Your AI Comic{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Welcome Section -->
+    <div class="col-12">
+        <div class="text-center mb-5">
+            <h1 class="display-4 mb-3">
+                <i data-feather="zap" class="text-warning"></i>
+                Welcome to VisualTales
+            </h1>
+            <p class="lead">Create amazing comic strips with AI-powered image generation and narration</p>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Create New Comic Form -->
+    <div class="col-lg-8">
+        <div class="creation-form">
+            <h2 class="h3 mb-4">
+                <i data-feather="plus-circle"></i>
+                Create New Comic
+            </h2>
+            
+            <form method="POST" action="{{ url_for('create_comic') }}" id="createComicForm">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="title" class="form-label">Comic Title *</label>
+                        <input type="text" class="form-control" id="title" name="title" required 
+                               placeholder="Enter your comic title">
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label for="style" class="form-label">Art Style</label>
+                        <select class="form-select" id="style" name="style">
+                            <option value="realistic">Realistic</option>
+                            <option value="cartoon">Cartoon</option>
+                            <option value="manga">Manga/Anime</option>
+                            <option value="superhero">Superhero</option>
+                            <option value="watercolor">Watercolor</option>
+                            <option value="sketch">Pencil Sketch</option>
+                            <option value="noir">Film Noir</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="description" class="form-label">Story Description</label>
+                    <textarea class="form-control" id="description" name="description" rows="3"
+                              placeholder="Brief description of your story (optional)"></textarea>
+                </div>
+                
+                <button type="submit" class="btn btn-primary btn-lg">
+                    <i data-feather="play"></i>
+                    Start Creating
+                </button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Recent Comics Sidebar -->
+    <div class="col-lg-4">
+        <div class="recent-comics">
+            <h3 class="h4 mb-4">
+                <i data-feather="clock"></i>
+                Recent Comics
+            </h3>
+            
+            {% if comics %}
+                {% for comic in comics %}
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ comic.title }}</h5>
+                            <p class="card-text text-muted">
+                                <small>
+                                    {{ comic.panels|length }} panel{{ 's' if comic.panels|length != 1 else '' }}
+                                    • {{ comic.created_at.strftime('%b %d, %Y') }}
+                                </small>
+                            </p>
+                            {% if comic.description %}
+                                <p class="card-text">{{ comic.description[:100] }}{% if comic.description|length > 100 %}...{% endif %}</p>
+                            {% endif %}
+                            
+                            <div class="d-flex gap-2">
+                                <a href="{{ url_for('view_comic', comic_id=comic.id) }}" class="btn btn-sm btn-outline-primary">
+                                    <i data-feather="eye"></i> View
+                                </a>
+                                <a href="{{ url_for('edit_comic', comic_id=comic.id) }}" class="btn btn-sm btn-secondary">
+                                    <i data-feather="edit"></i> Edit
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="text-center py-4">
+                    <i data-feather="file-text" size="48" class="text-muted mb-3"></i>
+                    <p class="text-muted">No comics yet. Create your first comic to get started!</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Features Section -->
+<div class="row mt-5">
+    <div class="col-12">
+        <h2 class="h3 text-center mb-4">Features</h2>
+    </div>
+    
+    <div class="col-md-3 text-center mb-4">
+        <i data-feather="image" size="48" class="text-info mb-3"></i>
+        <h4 class="h5">AI Image Generation</h4>
+        <p class="text-muted">Generate stunning comic panels using Gemini 2.5 Flash</p>
+    </div>
+    
+    <div class="col-md-3 text-center mb-4">
+        <i data-feather="users" size="48" class="text-success mb-3"></i>
+        <h4 class="h5">Character Consistency</h4>
+        <p class="text-muted">Maintain consistent characters across all panels</p>
+    </div>
+    
+    <div class="col-md-3 text-center mb-4">
+        <i data-feather="edit-3" size="48" class="text-warning mb-3"></i>
+        <h4 class="h5">Natural Language Editing</h4>
+        <p class="text-muted">Edit panels with simple text instructions</p>
+    </div>
+    
+    <div class="col-md-3 text-center mb-4">
+        <i data-feather="volume-2" size="48" class="text-danger mb-3"></i>
+        <h4 class="h5">AI Narration</h4>
+        <p class="text-muted">Add voice narration with ElevenLabs TTS</p>
+    </div>
+</div>
+
+<!-- Setup Instructions -->
+{% if not comics %}
+<div class="row mt-5">
+    <div class="col-12">
+        <div class="alert alert-info">
+            <h4 class="alert-heading">
+                <i data-feather="info"></i>
+                Getting Started
+            </h4>
+            <p class="mb-2">To use VisualTales, make sure you have API keys configured:</p>
+            <ul class="mb-0">
+                <li><strong>GEMINI_API_KEY</strong> - For comic panel generation (required)</li>
+                <li><strong>ELEVENLABS_API_KEY</strong> - For voice narration (optional)</li>
+            </ul>
+            <hr>
+            <p class="mb-0">
+                <small class="text-muted">
+                    Without API keys, the app will show placeholder images and skip audio generation.
+                    See the README.md for setup instructions.
+                </small>
+            </p>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Add subtle animations to feature cards
+    document.addEventListener('DOMContentLoaded', function() {
+        const featureCards = document.querySelectorAll('.col-md-3');
+        featureCards.forEach((card, index) => {
+            setTimeout(() => {
+                card.style.opacity = '0';
+                card.style.transform = 'translateY(20px)';
+                card.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+                setTimeout(() => {
+                    card.style.opacity = '1';
+                    card.style.transform = 'translateY(0)';
+                }, 100);
+            }, index * 150);
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,303 @@
+{% extends "base.html" %}
+
+{% block title %}{{ comic.title }} - VisualTales{% endblock %}
+
+{% block content %}
+<!-- Comic Header -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-start">
+            <div>
+                <h1 class="display-6">{{ comic.title }}</h1>
+                {% if comic.description %}
+                    <p class="lead text-muted">{{ comic.description }}</p>
+                {% endif %}
+                <div class="d-flex align-items-center gap-3 text-muted">
+                    <small>
+                        <i data-feather="calendar"></i>
+                        Created {{ comic.created_at.strftime('%B %d, %Y') }}
+                    </small>
+                    <small>
+                        <i data-feather="layers"></i>
+                        {{ panels|length }} panel{{ 's' if panels|length != 1 else '' }}
+                    </small>
+                    <small>
+                        <i data-feather="palette"></i>
+                        {{ comic.style|title }} style
+                    </small>
+                </div>
+            </div>
+            
+            <div class="d-flex gap-2">
+                {% if not view_mode %}
+                    <a href="{{ url_for('view_comic', comic_id=comic.id) }}" class="btn btn-outline-secondary">
+                        <i data-feather="eye"></i> Preview
+                    </a>
+                {% endif %}
+                
+                {% if view_mode and panels %}
+                    <button class="btn btn-success" onclick="exportComic({{ comic.id }})">
+                        <i data-feather="download"></i> Export PDF
+                    </button>
+                {% endif %}
+                
+                {% if not view_mode %}
+                    <form method="POST" action="{{ url_for('delete_comic', comic_id=comic.id) }}" style="display: inline;">
+                        <button type="submit" class="btn btn-outline-danger delete-btn" 
+                                data-item-name='"{{ comic.title }}"'>
+                            <i data-feather="trash-2"></i> Delete
+                        </button>
+                    </form>
+                {% else %}
+                    <a href="{{ url_for('edit_comic', comic_id=comic.id) }}" class="btn btn-primary">
+                        <i data-feather="edit"></i> Edit
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if not view_mode %}
+<!-- Character Management Section -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="creation-form">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h3 class="h4 mb-0">
+                    <i data-feather="users"></i>
+                    Characters
+                </h3>
+                <button type="button" class="btn btn-outline-primary btn-sm" onclick="toggleCharacterForm()">
+                    <i data-feather="plus"></i> Add Character
+                </button>
+            </div>
+            
+            <!-- Character List -->
+            {% set characters = comic.get_characters_dict() %}
+            {% if characters %}
+                <div class="character-list mb-3">
+                    {% for name, details in characters.items() %}
+                        <div class="character-badge" data-bs-toggle="tooltip" 
+                             title="{{ details.get('description', 'No description') }}">
+                            {{ name }}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="text-muted">No characters defined. Add characters to maintain consistency across panels.</p>
+            {% endif %}
+            
+            <!-- Add Character Form (Hidden by default) -->
+            <div id="characterForm" style="display: none;">
+                <form method="POST" action="{{ url_for('add_character', comic_id=comic.id) }}">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="character_name" class="form-label">Character Name *</label>
+                            <input type="text" class="form-control" id="character_name" name="character_name" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="character_description" class="form-label">Description</label>
+                            <input type="text" class="form-control" id="character_description" name="character_description" 
+                                   placeholder="Role, personality, and appearance description">
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary btn-sm">
+                            <i data-feather="plus"></i> Add Character
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="toggleCharacterForm()">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Panel Generation Form -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="creation-form">
+            <h3 class="h4 mb-3">
+                <i data-feather="plus-square"></i>
+                Generate New Panel
+            </h3>
+            
+            <form method="POST" action="{{ url_for('generate_panel', comic_id=comic.id) }}" 
+                  class="generate-panel-form">
+                <div class="mb-3">
+                    <label for="scene_description" class="form-label">Scene Description *</label>
+                    <textarea class="form-control" id="scene_description" name="scene_description" 
+                              rows="3" required placeholder="Describe what should happen in this panel..."></textarea>
+                    <div class="form-text">
+                        Be specific about actions, emotions, and setting. Mention characters by name if they appear.
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="narration_text" class="form-label">Narration (Optional)</label>
+                    <textarea class="form-control" id="narration_text" name="narration_text" 
+                              rows="2" placeholder="Add voice narration for this panel..."></textarea>
+                    <div class="form-text">
+                        This text will be converted to speech using AI voice synthesis.
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn btn-primary">
+                    <i data-feather="image"></i>
+                    Generate Panel
+                </button>
+                
+                <div class="loading-spinner">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Generating panel...</span>
+                    </div>
+                    <p class="mt-2 text-muted">Generating your panel... This may take a moment.</p>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Comic Panels -->
+<div class="row">
+    <div class="col-12">
+        <div class="comic-strip">
+            {% if panels %}
+                {% for panel in panels %}
+                    <div class="comic-panel" data-panel-id="{{ panel.id }}">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h4 class="h5 mb-0">
+                                <i data-feather="image"></i>
+                                {{ panel.title or ('Panel ' + panel.panel_number|string) }}
+                            </h4>
+                            <small class="text-muted">{{ panel.created_at.strftime('%b %d, %Y at %I:%M %p') }}</small>
+                        </div>
+                        
+                        <!-- Panel Image -->
+                        {% if panel.image_path %}
+                            <div class="text-center mb-3">
+                                <img src="{{ url_for('static', filename=panel.image_path.replace('static/', '')) }}" 
+                                     alt="Panel {{ panel.panel_number }}" class="panel-image">
+                            </div>
+                        {% endif %}
+                        
+                        <!-- Panel Description -->
+                        <div class="mb-3">
+                            <strong>Scene:</strong> {{ panel.description }}
+                        </div>
+                        
+                        <!-- Narration -->
+                        {% if panel.narration_text %}
+                            <div class="mb-3">
+                                <strong>Narration:</strong> {{ panel.narration_text }}
+                                
+                                {% if panel.audio_path %}
+                                    <audio controls class="audio-player mt-2">
+                                        <source src="{{ url_for('static', filename=panel.audio_path.replace('static/', '')) }}" 
+                                                type="audio/mpeg">
+                                        Your browser does not support the audio element.
+                                    </audio>
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                        
+                        {% if not view_mode %}
+                        <!-- Panel Controls -->
+                        <div class="panel-controls">
+                            <button type="button" class="btn btn-outline-secondary btn-sm" 
+                                    onclick="showEditForm({{ panel.id }})">
+                                <i data-feather="edit"></i> Edit Panel
+                            </button>
+                            
+                            <button type="button" class="btn btn-outline-info btn-sm" 
+                                    onclick="showNarrationForm({{ panel.id }})">
+                                <i data-feather="mic"></i> 
+                                {% if panel.narration_text %}Update{% else %}Add{% endif %} Narration
+                            </button>
+                            
+                            <form method="POST" action="{{ url_for('delete_panel', panel_id=panel.id) }}" style="display: inline;">
+                                <button type="submit" class="btn btn-outline-danger btn-sm delete-btn" 
+                                        data-item-name="Panel {{ panel.panel_number }}">
+                                    <i data-feather="trash-2"></i> Delete
+                                </button>
+                            </form>
+                        </div>
+                        
+                        <!-- Edit Panel Form (Hidden) -->
+                        <div id="editForm_{{ panel.id }}" style="display: none;" class="mt-3">
+                            <form method="POST" action="{{ url_for('edit_panel', panel_id=panel.id) }}" 
+                                  class="edit-panel-form">
+                                <div class="mb-3">
+                                    <label for="edit_instruction_{{ panel.id }}" class="form-label">Edit Instruction</label>
+                                    <input type="text" class="form-control" 
+                                           id="edit_instruction_{{ panel.id }}" name="edit_instruction" 
+                                           placeholder="e.g., 'make it nighttime', 'add rain', 'change character expression to happy'">
+                                </div>
+                                <div class="d-flex gap-2">
+                                    <button type="submit" class="btn btn-warning btn-sm">
+                                        <i data-feather="edit-3"></i> Apply Edit
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm" 
+                                            onclick="showEditForm({{ panel.id }})">Cancel</button>
+                                </div>
+                            </form>
+                        </div>
+                        
+                        <!-- Narration Form (Hidden) -->
+                        <div id="narrationForm_{{ panel.id }}" style="display: none;" class="mt-3">
+                            <form method="POST" action="{{ url_for('add_narration', panel_id=panel.id) }}" 
+                                  class="narration-form">
+                                <div class="mb-3">
+                                    <label for="narration_text_{{ panel.id }}" class="form-label">Narration Text</label>
+                                    <textarea class="form-control" id="narration_text_{{ panel.id }}" 
+                                              name="narration_text" rows="2" 
+                                              placeholder="Enter the narration for this panel...">{% if panel.narration_text %}{{ panel.narration_text }}{% endif %}</textarea>
+                                </div>
+                                <div class="d-flex gap-2">
+                                    <button type="submit" class="btn btn-info btn-sm">
+                                        <i data-feather="volume-2"></i> 
+                                        {% if panel.narration_text %}Update{% else %}Generate{% endif %} Audio
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm" 
+                                            onclick="showNarrationForm({{ panel.id }})">Cancel</button>
+                                </div>
+                            </form>
+                        </div>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="text-center py-5">
+                    <i data-feather="image" size="64" class="text-muted mb-3"></i>
+                    <h3 class="h4 text-muted">No panels yet</h3>
+                    <p class="text-muted">{% if view_mode %}This comic doesn't have any panels.{% else %}Generate your first panel to start creating your comic!{% endif %}</p>
+                    {% if not view_mode %}
+                        <button class="btn btn-primary" onclick="document.getElementById('scene_description').focus()">
+                            <i data-feather="plus"></i> Create First Panel
+                        </button>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Auto-scroll to new panels when they're generated
+    document.addEventListener('DOMContentLoaded', function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('new_panel')) {
+            const comicStrip = document.querySelector('.comic-strip');
+            if (comicStrip) {
+                comicStrip.scrollTop = comicStrip.scrollHeight;
+            }
+        }
+    });
+</script>
+{% endblock %}
